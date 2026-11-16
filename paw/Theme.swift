@@ -5,14 +5,20 @@
 
 import SwiftUI
 
-/// Сочетание цветов круга иконки: включается → включён → выключается.
+/// Сочетание цветов иконки: включается → включён → выключается.
+/// В обычном виде ими красится круг, в залитом (Filled) — лапка.
 /// Сами цвета лежат в Assets, у каждого свой вариант для светлой и тёмной строки меню.
 enum Theme: String, CaseIterable {
     case steel, halo, moon, garden, blood
+    // яркие
+    case fire, neon, signal, candy
 
     /// Ключ в UserDefaults, где хранится выбранная тема
     static let storageKey = "theme"
     static let standard: Theme = .steel
+
+    /// Ключ настройки «залитая иконка»: круг основным цветом строки меню, лапка — цветом темы
+    static let filledKey = "filledIcon"
 
     /// Тема, сохранённая в настройках (или стандартная, если ещё не выбирали)
     static var saved: Theme {
@@ -27,6 +33,10 @@ enum Theme: String, CaseIterable {
         case .moon: ["mist", "moon", "pewter"]
         case .garden: ["blush", "moss", "bronze"]
         case .blood: ["ember", "garnet", "ash"]
+        case .fire: ["flame", "scarlet", "fuchsia"]
+        case .neon: ["aqua", "azure", "violet"]
+        case .signal: ["flame", "jade", "scarlet"]
+        case .candy: ["aqua", "fuchsia", "violet"]
         }
     }
 

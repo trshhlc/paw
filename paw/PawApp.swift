@@ -34,8 +34,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let hostingView = NSHostingView(rootView: StatusBarView(vpnStatus: vpnStatus))
         hostingView.frame = NSRect(x: 0, y: 0, width: 36, height: 22)
         
-        button.addSubview(hostingView)
-        button.frame = hostingView.frame
+        // Контейнер подгоняет оформление, чтобы .primary совпадал по цвету с другими иконками строки меню
+        let icon = MenuBarIconContainer(content: hostingView)
+        button.addSubview(icon)
+        button.frame = icon.frame
         
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.action = #selector(handleClick(sender:))
@@ -90,6 +92,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             item.state = theme == current ? .on : .off
             themeMenu?.addItem(item)
         }
+
+        // Переключатель вида: галочка — залитый круг, цвет темы уходит на лапку
+        themeMenu?.addItem(.separator())
+        let filledItem = NSMenuItem(title: "Filled", action: #selector(toggleFilled(_:)), keyEquivalent: "")
+        filledItem.target = self
+        filledItem.state = UserDefaults.standard.bool(forKey: Theme.filledKey) ? .on : .off
+        themeMenu?.addItem(filledItem)
+    }
+
+    @objc func toggleFilled(_ sender: NSMenuItem) {
+        let defaults = UserDefaults.standard
+        defaults.set(!defaults.bool(forKey: Theme.filledKey), forKey: Theme.filledKey)
     }
 
     @objc func selectTheme(_ sender: NSMenuItem) {
@@ -142,15 +156,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct StatusBarView: View {
     @ObservedObject var vpnStatus: VPNStatusChecker
     @AppStorage(Theme.storageKey) private var theme: Theme = Theme.standard
+    @AppStorage(Theme.filledKey) private var filled = false
 
-    private var statusColor: Color {
+    /// Цвет статуса из темы; nil — VPN выключен
+    private var statusColor: Color? {
         switch vpnStatus.status {
         case .connected: theme.connected
         case .connecting: theme.connecting
         case .disconnecting: theme.disconnecting
-        case .disconnected: .clear
-        default: .clear
+        default: nil
         }
+    }
+
+    /// Выключен — просто лапка без круга.
+    /// Обычный вид: лапка основного цвета строки меню, круг — цвет статуса.
+    /// Залитый: круг основного цвета строки меню, как у остальных иконок, лапка — цвет статуса.
+    private var pawColor: Color {
+        guard let statusColor else { return .primary }
+        return filled ? statusColor : .primary
+    }
+
+    private var circleColor: Color {
+        guard let statusColor else { return .clear }
+        return filled ? .primary : statusColor
     }
 
     var body: some View {
@@ -160,10 +188,10 @@ struct StatusBarView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 18, height: 18)
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(.primary, statusColor)
-                .animation(.easeInOut(duration: 0.3), value: statusColor)
+                .foregroundStyle(pawColor, circleColor)
+                .animation(.easeInOut(duration: 0.3), value: [pawColor, circleColor])
                 .symbolEffect(.bounce.down.byLayer, options: .nonRepeating, value: vpnStatus.clicks)
-                .symbolEffect(.pulse, isActive: vpnStatus.status == .connected)
+                .symbolEffect(.wiggle, isActive: vpnStatus.status == .connected)
         }.frame(width: 36, height: 22)
             .cornerRadius(12)
             .onAppear {
